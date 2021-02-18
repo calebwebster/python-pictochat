@@ -8,7 +8,7 @@ import socket
 import os
 
 SCROLL_SPEED = 0.05
-SERVER = os.getenv("SERVER_ADDRESS")
+SERVER = "45.79.236.224"
 ADDR = (SERVER, PORT)
 
 

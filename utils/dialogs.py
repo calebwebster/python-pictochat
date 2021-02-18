@@ -60,8 +60,6 @@ class PasswordDialog(Dialog):
         message_label = Label(master, text="Enter password to access chat room.")
         password_entry = Entry(master, width=27, bd=1, show="\u2022", relief=SOLID, font=("Consolas", 10))  # show="" to reset
         
-        password_entry.insert(0, "tinyfinch")
-        
         message_label.pack(pady=(0, 15))
         password_entry.pack(ipady=1, ipadx=1)
         
