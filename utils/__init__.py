@@ -20,6 +20,4 @@ with open("utils/colours.json", "r") as colours_file:
     COLOURS = json.load(colours_file)
 
 HEADER_LENGTH = 8
-PORT = 5000
-IMG_CHUNK_SIZE = 10000
 FORMAT = "utf-8"
