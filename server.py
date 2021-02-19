@@ -235,7 +235,7 @@ class Server:
         :param list exclude: clients to not publish message to
         """
         for client in self.clients:
-            if client.is_logged_in and client != exclude:
+            if client.is_logged_in and client not in exclude:
                 self.send(client.connection, CODES["message"])
                 self.send(client.connection, sender.username + sender.colour + message)
     
@@ -249,7 +249,7 @@ class Server:
         :param exclude: clients to not publish drawing to
         """
         for client in self.clients:
-            if client.is_logged_in and client != exclude:
+            if client.is_logged_in and client not in exclude:
                 conn = client.connection
                 self.send(conn, CODES["drawing"])  # !DRAWING
                 self.send(conn, sender.username + sender.colour + img_size)  # tha_phat_rabbit#00ff00400x400
