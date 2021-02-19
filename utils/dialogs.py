@@ -1,3 +1,13 @@
+"""
+Dialogs
+2021
+Custom tkinter dialog boxes for use in Client GUI.
+
+This module contains the following dialogs:
+PasswordDialog: Gets password from user
+ColourDialog: Gives the user colour buttons to choose from.
+DrawDialog: Opens a drawing canvas and gets the image that was created.
+"""
 from tkinter.simpledialog import Dialog
 from utils import SMALL_FONT
 from PIL import ImageGrab
@@ -437,12 +447,15 @@ class DrawDialog(Dialog):
 
 
 def get_password(root):
+    """Open a Dialog and get password from user."""
     return PasswordDialog(parent=root, title="Enter Password").result
 
 
 def get_colour(root, colours, taken):
+    """Open a ColourDialog and get colour from user."""
     return ColourDialog(parent=root, colours=colours, taken_colours=taken, title="Select Colour").result
 
 
 def get_drawing(root, last_settings, colours):
+    """Open a DrawDialog and get password from user."""
     return DrawDialog(parent=root, brush_size=last_settings["brush_size"], brush_colour=last_settings["brush_colour"], colours=colours, title="Create Drawing").result
