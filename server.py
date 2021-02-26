@@ -323,16 +323,18 @@ class Server:
                 is_running = False
                 continue
             # Assign client a unique number when it connects.
-            taken_nums = [client.number for client in self.clients]
+            taken_usernames = [c.username for c in self.clients]
             client_num = 1
-            while client_num in taken_nums:
+            client_username = "Guest 1"
+            while client_username in taken_usernames:
                 client_num += 1
+                client_username = f"Guest {client_num}"
             # Assign the client a random colour.
             taken_colours = [c.colour for c in self.clients]
             available_colours = [colour for colour in COLOURS if colour not in taken_colours]
             client_colour = random.choice(available_colours)
             # Create ClientData object.
-            client = ClientData(connection, address, f"Guest {client_num}", client_colour)
+            client = ClientData(connection, address, client_username, client_colour)
             self.clients.append(client)
             # Start new thread running receive_message to get messages from client.
             client_thread = threading.Thread(target=self.receive_from_client, args=(client,))
