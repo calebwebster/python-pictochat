@@ -291,8 +291,6 @@ class DrawDialog(Dialog):
         oval_id = self.canvas.create_oval(x1, y1, x2, y2, fill=fill, outline=fill)
         # Store data for actions.
         self.new_action.append({"type": "oval", "id": oval_id, "coords": [x1, y1, x2, y2], "fill": fill})
-        if fill != "white":
-            self.send_btn.config(state=NORMAL)
     
     def draw_line(self, event):
         if self.eraser_is_active:
@@ -304,8 +302,6 @@ class DrawDialog(Dialog):
         line_id = self.canvas.create_line((x1, y1, x2, y2), fill=fill, width=self.brush_size, capstyle=ROUND)
         # Store data for actions.
         self.new_action.append({"type": "line", "id": line_id, "coords": [x1, y1, x2, y2], "width": self.brush_size, "fill": fill})
-        if fill != "white":
-            self.send_btn.config(state=NORMAL)
         # Store current coordinates for next line.
         self.store_mouse_xy(event)
     
@@ -415,7 +411,7 @@ class DrawDialog(Dialog):
         self.undo_btn = Button(button_frame, text="Undo", bd=3, font=SMALL_FONT, width=7, command=self.undo, state=DISABLED)
         self.redo_btn = Button(button_frame, text="Redo", bd=3, font=SMALL_FONT, width=7, command=self.redo, state=DISABLED)
         self.clear_btn = Button(button_frame, text="Clear", bd=3, font=SMALL_FONT, width=7, command=self.clear_canvas)
-        self.send_btn = Button(button_frame, text="Send", bd=3, font=SMALL_FONT, width=7, command=self.ok, default=ACTIVE, state=DISABLED)
+        self.send_btn = Button(button_frame, text="Send", bd=3, font=SMALL_FONT, width=7, command=self.ok, default=ACTIVE)
         self.close_btn = Button(button_frame, text="Close", bd=3, font=SMALL_FONT, width=7, command=self.cancel)
 
         button_frame.pack()
