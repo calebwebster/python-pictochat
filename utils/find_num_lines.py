@@ -5,19 +5,19 @@ def find_num_lines(string, wrap_length, add_extra=False):
     """
     Return the number of lines a string will require when word wrapped
     to a certain length.
-    
+
     :param str string: string to wrap
     :param int wrap_length: maximum length of each line
     :param bool add_extra: set to true to display long words on a new line.
     :return: number of lines the string will occupy once wrapped
     :rtype: int
-    
+
     This function requires find_nth().
     """
     sp_num = 1  # Number of next space (used in find_nth())
     num_lines = 1  # Number of lines
     char_pos = 0  # Index of char in current line
-    
+
     for x in range(len(string)):
         char = string[x]
         if char == " ":
@@ -41,10 +41,11 @@ def find_num_lines(string, wrap_length, add_extra=False):
             num_lines += 1
             char_pos = -1
         char_pos += 1
-    
+
     return num_lines
 
 
 if __name__ == '__main__':
     # print(find_num_lines("Abominable Strawberry Government", 10))
-    print(find_num_lines("Guest 1: hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh5 6", 77, True))
+    print(find_num_lines(
+        "Guest 1: hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh5 6", 77, True))

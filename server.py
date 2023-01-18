@@ -1,137 +1,84 @@
-"""
-Chat App Server
-2021
-This program stores and runs the Server class for my Chat App.
-
-`Github <https://www.github.com/CalebWebsterJCU/ChatApp>`_
-
-Examples:
-    Running server.py from command line::
-    
-        $ cd ChatApp
-        $ python server.py
-    
-    Running an instance of Server::
-        
-        $ IP = ""
-        $ PORT = 5000
-        $ from server import Server
-        $ Server(IP, PORT).start()
-
-If you're running server.py on a hosting service, set IP to "",
-otherwise use your PCs IP address.
-"""
-
 from utils import CODES, COLOURS, HEADER_LENGTH, FORMAT
 import threading
+from types import SimpleNamespace
+import selectors
 import getpass
 import socket
 import random
 import bcrypt
-
-SERVER = ""
-PORT = 5000
-
-
-class ClientData:
-    """
-    A class to store data for a ChatApp client.
-    
-    Attributes:
-        connection : socket
-            client's socket used to send and receive messages
-        address : str
-            client's public IP address
-        colour : str
-            client's colour as a 6-character hexidecimal code (with #)
-        username : str
-            client's username. Initialized as f"Guest {number}"
-        is_logged_in : bool
-            whether or not the client can send and receive messages
-    """
-    
-    def __init__(self, connection, address, username, colour):
-        """
-        Initialize attributes and store data for ClientData object.
-        
-        :param connection: client's socket, provided when client connects
-        :type connection: socket.socket or None, in the case of server's client
-        :param tuple address: tuple of client's public IP and port number
-        :param str username: client's unique username
-        :param str colour: client's unique colour
-        """
-        self.connection = connection
-        self.address = address
-        self.username = username
-        self.colour = colour
-        self.is_logged_in = False
+import argparse
 
 
 class Server:
-    """
-    A class to store socket information and methods for a Chat App Server.
-    
-    Attributes:
-        password_hash : str
-            string of server's password, hashed with bcrypt
-        server : socket.socket
-            server's socket, used to send and receive messages
-        own_client : ClientData
-            server's own virtual "client" it uses to send status messages
-        clients : list
-            list of currently connected clients
-    
-    Methods:
-        receive_from_client(self, client):
-            Receive codes from client's socket and perform functions based on code.
-        get_taken_colours(self, client):
-            Get taken colours, excluding current client's colour.
-        get_taken_usernames(self, client):
-            Get taken colours, excluding current client's username.
-        publish_message(self, message, sender, exclude=()):
-            Send message information to all clients except excluded ones.
-        publish_drawing(self, img_data, img_size, sender, exclude=()):
-            Send drawing to all clients except excluded ones.
-        send(recipient, message):
-            Send a basic message to a connected client.
-        recv(sender):
-            Receive a basic message from a client.
-        connect_clients(self):
-            Listen on socket, accepting new clients and starting threads.
-        start(self):
-            Start server.
-    """
-    
-    def __init__(self, server_ip, port):
-        """
-        Bind server socket to IP and port, get password, initialize own client.
+
+    def __init__(self, ip, port, password):
+        self.ip = ip
+        self.port = port
+        self.password = password
+        # self.own_client = User(None, ("", 0), "Server", "#000000")
+        # self.own_client.is_logged_in = True
+        self.users = []
+        self.is_running = True
+
+    def with_defaults():
+        return Server("127.0.0.1", 55000, "")
         
-        :param server_ip: IP address of server (leave blank if on hosting site)
-        :param port: Port number to bind socket to
-        """
-        addr = (server_ip, port)
-        # Get server's password using getpass and hash it using bcrypt.
-        server_password = getpass.getpass("Server Password: ")
-        self.password_hash = bcrypt.hashpw(server_password.encode(FORMAT), bcrypt.gensalt())
-        # Create socket and bind IP and port to it.
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.bind(addr)
-        # Initialize server's "client", used to send status messages.
-        self.own_client = ClientData(None, ("", 0), "Server", "#000000")
-        self.own_client.is_logged_in = True
-        self.clients = []
+    @staticmethod
+    def new_client_has_connected(server_selector):
+        events = server_selector.select(timeout=0)
+        if events:
+            return True
+        return False
+        
+    def accept_connection(self):
+        try:
+            connection, address = self.server_socket.accept()
+            return connection, address
+        except BlockingIOError:
+            return None, None
+        except TimeoutError:
+            return None, None
     
+    def connect_new_client(self, client_selector):
+        connection, address = self.accept_connection()
+        if not connection:
+            return
+        print(f"Accepted {address} (fd {connection.fileno()})")
+        events = selectors.EVENT_READ | selectors.EVENT_WRITE
+        connection_data = SimpleNamespace(
+            address=address, 
+            bytes_read=b"", 
+            bytes_to_write=b""
+        )
+        client_selector.register(connection, events, data=connection_data)
+        if self.password:
+            connection.send(b'SENDPASS\x00\x00\x00\x00')
+        else:
+            connection.send(b'AUTHSUCC\x00\x00\x00\x00')
+        connection.close()
+        self.users.append(SimpleNamespace(address=address))
+
+    def start_listening(self):
+        self.server_socket = socket.create_server((self.ip, self.port))
+        # self.server_socket.settimeout(1)
+        self.server_socket.setblocking(False)
+        # server_selector = selectors.DefaultSelector()
+        # server_selector.register(self.server_socket, selectors.EVENT_READ)
+        client_selector = selectors.DefaultSelector()
+        while self.is_running:
+            self.connect_new_client(client_selector)
+
+        self.server_socket.close()
+        print("[SHUTDOWN] Server has shut down")
+
+    def add_client(self, client):
+        self.users.append(client)
+        
+    def shutdown(self):
+        self.is_running = False
+        print(f"[SHUTDOWN] Shutting down server")
+
     def receive_from_client(self, client):
-        """
-        Receive codes from client's socket and perform functions based on code.
-        
-        :param ClientData client: object containing client's data
-        
-        This function runs on its own thread, separate from the rest of the
-        program. A new thread is created for each client that connects.
-        If code == DISCONNECT_MESSAGE, close the connection and remove client
-        from self.clients.
-        """
         conn = client.connection
         addr = client.address
         is_connected = True
@@ -155,7 +102,8 @@ class Server:
                     self.send(conn, CODES["username_success"])
                     self.send(conn, client.username)
                     # Display a login message to all clients except this one.
-                    self.publish_message(f"{client.username} has entered the chat.", self.own_client, exclude=[client])
+                    self.publish_message(
+                        f"{client.username} has entered the chat.", self.own_client, exclude=[client])
                     # Log client in and send auth_success code so client can chat.
                     client.is_logged_in = True
                     self.send(conn, CODES["auth_success"])
@@ -178,7 +126,8 @@ class Server:
                     self.send(conn, CODES["username_success"])
                     self.send(conn, username)
                     # Display status message to all clients except this one.
-                    self.publish_message(f"{client.username} changed their name to {username}.", self.own_client, exclude=[client])
+                    self.publish_message(
+                        f"{client.username} changed their name to {username}.", self.own_client, exclude=[client])
                     client.username = username
             # MESSAGE
             elif code == CODES["message"]:
@@ -214,55 +163,34 @@ class Server:
                     self.send(conn, colour)
         # Close connection and remove client from clients.
         conn.close()
-        self.clients.remove(client)
+        self.users.remove(client)
         print(f"[DISCONNECT] {addr} disconnected")
-        print(f"[CONNECTIONS] {len(self.clients)}")
-    
+        print(f"[CONNECTIONS] {len(self.users)}")
+
     def get_taken_colours(self, client):
-        """Get taken colours, excluding current client's colour."""
-        return [c.colour for c in self.clients if c != client]
-    
+        return [c.colour for c in self.users if c != client]
+
     def get_taken_usernames(self, client):
-        """Get taken colours, excluding current client's username."""
-        return [c.username for c in self.clients if c != client]
-    
+        return [c.username for c in self.users if c != client]
+
     def publish_message(self, message, sender, exclude=()):
-        """
-        Send message information to all clients except excluded ones.
-        
-        :param str message: message to send
-        :param ClientData sender: client that send the message
-        :param list exclude: clients to not publish message to
-        """
-        for client in self.clients:
+        for client in self.users:
             if client.is_logged_in and client not in exclude:
                 self.send(client.connection, CODES["message"])
-                self.send(client.connection, sender.username + sender.colour + message)
-    
+                self.send(client.connection, sender.username +
+                          sender.colour + message)
+
     def publish_drawing(self, img_data, img_size, sender, exclude=()):
-        """
-        Send drawing to all clients except excluded ones.
-        
-        :param bytes img_data: raw data of image from dialogs.get_drawing
-        :param str img_size: image size string of format: [width]x[height]
-        :param ClientData sender: client that sent the message
-        :param exclude: clients to not publish drawing to
-        """
-        for client in self.clients:
+        for client in self.users:
             if client.is_logged_in and client not in exclude:
                 conn = client.connection
                 self.send(conn, CODES["drawing"])  # !DRAWING
-                self.send(conn, sender.username + sender.colour + img_size)  # tha_phat_rabbit#00ff00400x400
+                self.send(conn, sender.username + sender.colour +
+                          img_size)  # tha_phat_rabbit#00ff00400x400
                 self.send(conn, img_data)
-    
+
     @staticmethod
     def send(recipient, message):
-        """
-        Send a basic message to a connected client.
-        
-        :param recipient: client to send message to
-        :param message: message to send
-        """
         # If message is not encoded, encode it.
         if not isinstance(message, bytes):
             message = bytes(message, FORMAT)
@@ -272,19 +200,14 @@ class Server:
         recipient.send(header)
         recipient.send(message)
         if len(message) > 1000:
-            print(F"[SENT] Header: {int(header)}, Message: {len(message)} (to {recipient.getpeername()[0]})")
+            print(
+                F"[SENT] Header: {int(header)}, Message: {len(message)} (to {recipient.getpeername()[0]})")
         else:
-            print(f"[SENT] Header: {int(header)}, Message: {message} (to {recipient.getpeername()[0]})")
-    
+            print(
+                f"[SENT] Header: {int(header)}, Message: {message} (to {recipient.getpeername()[0]})")
+
     @staticmethod
     def recv(sender):
-        """
-        Receive a basic message from a client.
-        
-        :param socket.socket sender: client's socket to receive message from.
-        :return: message that was received
-        :rtype: bytes
-        """
         header = b""
         while len(header) < HEADER_LENGTH:
             header += sender.recv(HEADER_LENGTH - len(header))
@@ -296,18 +219,14 @@ class Server:
         # If message is longer than 1000 bytes, print the length
         # rather than the entire message.
         if len(received) > 1000:
-            print(f"[RECEIVED] Header: {bytes_to_recv}, Message: {len(received)} (from {sender.getpeername()[0]})")
+            print(
+                f"[RECEIVED] Header: {bytes_to_recv}, Message: {len(received)} (from {sender.getpeername()[0]})")
         else:
-            print(f"[RECEIVED] Header: {bytes_to_recv}, Message: {received} (from {sender.getpeername()[0]})")
+            print(
+                f"[RECEIVED] Header: {bytes_to_recv}, Message: {received} (from {sender.getpeername()[0]})")
         return received
-    
+
     def connect_clients(self):
-        """
-        Listen on socket, accepting new clients and starting threads.
-        
-        Client threads are daemon, so they will close when main program
-        exits or the client disconnects.
-        """
         is_running = True
         self.server.listen(20)  # Allow a queue of up to 20 connections
         print("[LISTENING] Listening for new connections")
@@ -317,39 +236,56 @@ class Server:
                 connection, address = self.server.accept()
             except KeyboardInterrupt:
                 # Send disconnect message and close thread.
-                for client in self.clients:
+                for client in self.users:
                     self.send(client.connection, CODES["server_shutdown"])
                 print("[CLOSING] Server is shutting down")
                 is_running = False
                 continue
             # Assign client a unique number when it connects.
-            taken_usernames = [c.username for c in self.clients]
+            taken_usernames = [c.username for c in self.users]
             client_num = 1
             client_username = "Guest 1"
             while client_username in taken_usernames:
                 client_num += 1
                 client_username = f"Guest {client_num}"
             # Assign the client a random colour.
-            taken_colours = [c.colour for c in self.clients]
-            available_colours = [colour for colour in COLOURS if colour not in taken_colours]
+            taken_colours = [c.colour for c in self.users]
+            available_colours = [
+                colour for colour in COLOURS if colour not in taken_colours]
             client_colour = random.choice(available_colours)
             # Create ClientData object.
-            client = ClientData(connection, address, client_username, client_colour)
-            self.clients.append(client)
+            client = User(connection, address,
+                                client_username, client_colour)
+            self.users.append(client)
             # Start new thread running receive_message to get messages from client.
-            client_thread = threading.Thread(target=self.receive_from_client, args=(client,))
+            client_thread = threading.Thread(
+                target=self.receive_from_client, args=(client,))
             client_thread.daemon = True  # Thread will close on exit
             client_thread.start()
             # Send a message to the client asking for a password
             self.send(connection, CODES["send_password"])
             print(f"[CONNECTED] {address[0]} connected to server")
-            print(f"[CONNECTIONS] {len(self.clients)}")
-    
-    def start(self):
-        """Start server."""
-        print("[STARTING] Server is starting up")
-        self.connect_clients()
+            print(f"[CONNECTIONS] {len(self.users)}")
+
+    # def start(self):
+    #     print("[STARTING] Server is starting up")
+    #     self.server = socket.create_server((self.ip, self.port))
+    #     password = getpass.getpass("Server Password: ")
+    #     self.password_hash = bcrypt.hashpw(
+    #         password.encode(FORMAT), bcrypt.gensalt())
+    #     self.connect_clients()
 
 
-if __name__ == '__main__':
-    Server(SERVER, PORT).start()
+# def port_number_argparse_type(arg_value_string):
+#     if not arg_value_string.isdigit():
+#         raise argparse.ArgumentTypeError(
+#             f"invalid port number: {arg_value_string}")
+#     port_number = int(arg_value_string)
+#     if port_number > 65535 or port_number < 1:
+#         raise argparse.ArgumentTypeError(
+#             f"invalid port number: {arg_value_string}")
+#     return port_number
+
+
+class PasswordPrompter:
+    pass

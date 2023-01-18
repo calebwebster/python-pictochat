@@ -1,0 +1,56 @@
+{
+    "from_server": {
+        "SENDPASS": {
+            "name": "send_password",
+            "has_body": false
+        },
+        "AUTHSTAT": {
+            "name": "auth_status",
+            "has_body": true
+        },
+        "ALLCOLRS": {
+            "name": "all_colours",
+            "has_body": true
+        },
+        "COLRSTAT": {
+            "name": "colour_success",
+            "has_body": true
+        },
+        "NAMESTAT": {
+            "name": "username_success",
+            "has_body": true
+        },
+        "SERVMESG": {
+            "name": "server_message",
+            "has_body": true
+        },
+        "RECVMESG": {
+            "name": "receive_message",
+            "has_body": true
+        },
+        "RECVDRAW": {
+            "name": "receive_drawing",
+            "has_body": true
+        }
+    },
+    "from_client": {
+        "PASSWORD": {
+            "name": "password"
+        },
+        "WHATCLRS": {
+            "name": "what_colours"
+        },
+        "CHNGCOLR": {
+            "name": "change_colour"
+        },
+        "CHNGNAME": {
+            "name": "change_username"
+        },
+        "SENDMESG": {
+            "name": "send_message"
+        },
+        "SENDDRAW": {
+            "name": "send_drawing"
+        }
+    }
+}
