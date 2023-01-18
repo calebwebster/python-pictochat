@@ -43,7 +43,8 @@ class Server:
         connection, address = self.accept_connection()
         if not connection:
             return
-        print(f"Accepted {address} (fd {connection.fileno()})")
+        connection.setblocking(False)
+        print('accepted', connection, 'from', address)
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         connection_data = SimpleNamespace(
             address=address, 
@@ -51,19 +52,19 @@ class Server:
             bytes_to_write=b""
         )
         client_selector.register(connection, events, data=connection_data)
+        
         if self.password:
             connection.send(b'SENDPASS\x00\x00\x00\x00')
         else:
             connection.send(b'AUTHSUCC\x00\x00\x00\x00')
         connection.close()
+        client_selector.unregister(connection)
         self.users.append(SimpleNamespace(address=address))
+        print(len(self.users))
 
     def start_listening(self):
         self.server_socket = socket.create_server((self.ip, self.port))
-        # self.server_socket.settimeout(1)
         self.server_socket.setblocking(False)
-        # server_selector = selectors.DefaultSelector()
-        # server_selector.register(self.server_socket, selectors.EVENT_READ)
         client_selector = selectors.DefaultSelector()
         while self.is_running:
             self.connect_new_client(client_selector)

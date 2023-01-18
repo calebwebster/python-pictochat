@@ -28,7 +28,7 @@ class TestServer(unittest.TestCase):
 
             client = socket.create_connection((server.ip, server.port), timeout=1)
 
-            time.sleep(0.000001)
+            time.sleep(1)
 
             self.assertEqual(1, len(server.users))
             self.assertEqual(server.users[0].address, client.getsockname())
@@ -38,7 +38,7 @@ class TestServer(unittest.TestCase):
             client.close()
             server.shutdown()
             server_thread.join()
-            
+
     def test_should_connect_two_clients(self):
         print()
         try:
@@ -49,7 +49,7 @@ class TestServer(unittest.TestCase):
             client1 = socket.create_connection((server.ip, server.port), timeout=1)
             client2 = socket.create_connection((server.ip, server.port), timeout=1)
             
-            time.sleep(0.000001)
+            time.sleep(1)
 
             self.assertEqual(2, len(server.users))
             self.assertEqual(server.users[0].address, client1.getsockname())
