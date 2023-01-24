@@ -44,7 +44,7 @@ class Server:
         if not connection:
             return
         connection.setblocking(False)
-        print('accepted', connection, 'from', address)
+        # print('accepted', connection, 'from', address)
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         connection_data = SimpleNamespace(
             address=address, 
@@ -60,7 +60,6 @@ class Server:
         connection.close()
         client_selector.unregister(connection)
         self.users.append(SimpleNamespace(address=address))
-        print(len(self.users))
 
     def start_listening(self):
         self.server_socket = socket.create_server((self.ip, self.port))
